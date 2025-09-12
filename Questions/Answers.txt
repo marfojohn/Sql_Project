@@ -1,0 +1,491 @@
+-- 1. Select all records from the Employee table.
+SELECT * FROM Employee;
+
+-- 2. Display first_name and last_name of all employees.
+SELECT first_name, last_name FROM Employee;
+
+-- 3. Show all employees who are female.
+SELECT * FROM Employee WHERE sex = 'F';
+
+-- 4. Get the birth_date of employee with emp_id = 103.
+SELECT birth_date FROM Employee WHERE emp_id = 103;
+
+-- 5. Display all branch names.
+SELECT branch_name FROM Branch;
+
+-- 6. Show all employees in branch_id = 2.
+SELECT * FROM Employee WHERE branch_id = 2;
+
+-- 7. Retrieve all suppliers and their supply types.
+SELECT supplier_name, supply_type FROM Branch_Supplier;
+
+-- 8. List all client names.
+SELECT client_name FROM Client;
+
+-- 9. Show the salary of all employees in ascending order.
+SELECT salary FROM Employee ORDER BY salary ASC;
+
+-- 10. Get details of employee "Michael Scott".
+SELECT * FROM Employee WHERE first_name = 'Michael' AND last_name = 'Scott';
+
+-- 11. Show the branch where "Jim Halpert" works.
+SELECT branch_id FROM Employee WHERE first_name = 'Jim' AND last_name = 'Halpert';
+
+-- 12. Display all employees with salary greater than 100,000.
+SELECT * FROM Employee WHERE salary > 100000;
+
+-- 13. Show all clients handled by branch 3.
+SELECT * FROM Client WHERE branch_id = 3;
+
+-- 14. Display names of employees born after 1970.
+SELECT first_name, last_name FROM Employee WHERE birth_date > '1970-01-01';
+
+-- 15. Retrieve all suppliers that provide paper.
+SELECT * FROM Branch_Supplier WHERE supply_type = 'Paper';
+
+-- 16. Find all male employees.
+SELECT * FROM Employee WHERE sex = 'M';
+
+-- 17. Show the total number of employees in each branch.
+SELECT branch_id, COUNT(*) AS total_employees
+FROM Employee
+GROUP BY branch_id;
+
+-- 18. Get details of the employee with the highest salary.
+SELECT * FROM Employee
+WHERE salary = (SELECT MAX(salary) FROM Employee);
+
+-- 19. Retrieve all employees who don’t have a supervisor.
+SELECT * FROM Employee WHERE super_id IS NULL;
+
+-- 20. List all unique supply types.
+SELECT DISTINCT supply_type FROM Branch_Supplier;
+
+-- 21. Show employees with salary between 60,000 and 100,000.
+SELECT * FROM Employee
+WHERE salary BETWEEN 60000 AND 100000;
+
+-- 22. Get employees whose last name starts with "H".
+SELECT * FROM Employee
+WHERE last_name LIKE 'H%';
+
+-- 23. Find employees born before 1965.
+SELECT * FROM Employee
+WHERE birth_date < '1965-01-01';
+
+-- 24. List employees who earn less than 80,000.
+SELECT * FROM Employee
+WHERE salary < 80000;
+
+-- 25. Display clients whose name contains "FedEx".
+SELECT * FROM Client
+WHERE client_name LIKE '%FedEx%';
+
+-- 26. Show employees whose first name ends with "n".
+SELECT * FROM Employee
+WHERE first_name LIKE '%n';
+
+-- 27. Find all suppliers whose name contains "Uni".
+SELECT * FROM Branch_Supplier
+WHERE supplier_name LIKE '%Uni%';
+
+-- 28. Show employees with super_id = 102.
+SELECT * FROM Employee
+WHERE super_id = 102;
+
+-- 29. Display employees working in branch_id = 1 or 2.
+SELECT * FROM Employee
+WHERE branch_id IN (1, 2);
+
+-- 30. List all employees not in branch 3.
+SELECT * FROM Employee
+WHERE branch_id <> 3;
+
+-- 31. Show employees with salary not equal to 71,000.
+SELECT * FROM Employee
+WHERE salary <> 71000;
+
+-- 32. Find employees born in September.
+SELECT * FROM Employee
+WHERE MONTH(birth_date) = 9;
+
+-- 33. Display clients whose client_id is greater than 402.
+SELECT * FROM Client
+WHERE client_id > 402;
+
+-- 34. Show employees with salary divisible by 5,000.
+SELECT * FROM Employee
+WHERE salary % 5000 = 0;
+
+-- 35. Display employees whose last_name is "Hudson".
+SELECT * FROM Employee
+WHERE last_name = 'Hudson';
+
+-- 36. Find clients whose name length is greater than 10 characters.
+SELECT * FROM Client
+WHERE LENGTH(client_name) > 10;
+
+-- 37. Show all employees whose salary is greater than their supervisor’s salary.
+SELECT e.emp_id, e.first_name, e.last_name, e.salary, s.salary AS supervisor_salary
+FROM Employee e
+JOIN Employee s ON e.super_id = s.emp_id
+WHERE e.salary > s.salary;
+
+-- 38. List employees with salary equal to branch manager’s salary.
+SELECT e.*
+FROM Employee e
+JOIN Branch b ON e.branch_id = b.branch_id
+JOIN Employee m ON b.mgr_id = m.emp_id
+WHERE e.salary = m.salary;
+
+-- 39. Display employees with birth_date in the 1960s.
+SELECT * FROM Employee
+WHERE YEAR(birth_date) BETWEEN 1960 AND 1969;
+
+-- 40. Show clients with branch_id not equal to 2.
+SELECT * FROM Client
+WHERE branch_id <> 2;
+
+-- 41. Count total number of employees.
+SELECT COUNT(*) AS total_employees
+FROM Employee;
+
+-- 42. Find the average salary of employees.
+SELECT AVG(salary) AS avg_salary
+FROM Employee;
+
+-- 43. Get the maximum salary.
+SELECT MAX(salary) AS max_salary
+FROM Employee;
+
+-- 44. Get the minimum salary.
+SELECT MIN(salary) AS min_salary
+FROM Employee;
+
+-- 45. Find the total salary expense for branch_id = 3.
+SELECT SUM(salary) AS total_salary_expense
+FROM Employee
+WHERE branch_id = 3;
+
+-- 46. Count how many female employees exist.
+SELECT COUNT(*) AS female_count
+FROM Employee
+WHERE sex = 'F';
+
+-- 47. Find the average salary of male employees.
+SELECT AVG(salary) AS avg_male_salary
+FROM Employee
+WHERE sex = 'M';
+
+-- 48. Count total number of clients in each branch.
+SELECT branch_id, COUNT(*) AS client_count
+FROM Client
+GROUP BY branch_id;
+
+-- 49. Get the highest total_sales value.
+SELECT MAX(total_sales) AS max_sales
+FROM Works_With;
+
+-- 50. Calculate the sum of all sales.
+SELECT SUM(total_sales) AS total_sales_sum
+FROM Works_With;
+
+-- 51. Find the average total_sales per employee.
+SELECT emp_id, AVG(total_sales) AS avg_sales
+FROM Works_With
+GROUP BY emp_id;
+
+-- 52. Count how many suppliers each branch has.
+SELECT branch_id, COUNT(*) AS supplier_count
+FROM Branch_Supplier
+GROUP BY branch_id;
+
+-- 53. Find the supplier count for branch_id = 2.
+SELECT COUNT(*) AS supplier_count
+FROM Branch_Supplier
+WHERE branch_id = 2;
+
+-- 54. Get the number of employees supervised by emp_id = 100.
+SELECT COUNT(*) AS subordinates
+FROM Employee
+WHERE super_id = 100;
+
+-- 55. Find total sales handled by employee 105.
+SELECT SUM(total_sales) AS total_sales_105
+FROM Works_With
+WHERE emp_id = 105;
+
+-- 56. Show total sales for each client.
+SELECT client_id, SUM(total_sales) AS client_sales
+FROM Works_With
+GROUP BY client_id;
+
+-- 57. Show the branch with the maximum number of clients.
+SELECT branch_id, COUNT(*) AS client_count
+FROM Client
+GROUP BY branch_id
+ORDER BY client_count DESC
+LIMIT 1;
+
+-- 58. Find the employee with the highest total sales.
+SELECT emp_id, SUM(total_sales) AS total_sales
+FROM Works_With
+GROUP BY emp_id
+ORDER BY total_sales DESC
+LIMIT 1;
+
+-- 59. Show the average salary of employees in each branch.
+SELECT branch_id, AVG(salary) AS avg_salary
+FROM Employee
+GROUP BY branch_id;
+
+-- 60. Count the number of supervisors (employees referenced in super_id).
+SELECT COUNT(DISTINCT super_id) AS supervisors_count
+FROM Employee
+WHERE super_id IS NOT NULL;
+
+-- 61. Display employee names with their branch name.
+SELECT e.first_name, e.last_name, b.branch_name
+FROM Employee e
+JOIN Branch b ON e.branch_id = b.branch_id;
+
+-- 62. Show branch manager names with branch_name.
+SELECT b.branch_name, e.first_name, e.last_name
+FROM Branch b
+JOIN Employee e ON b.mgr_id = e.emp_id;
+
+-- 63. List client names along with their branch_name.
+SELECT c.client_name, b.branch_name
+FROM Client c
+JOIN Branch b ON c.branch_id = b.branch_id;
+
+-- 64. Show employees and the clients they worked with (Works_With).
+SELECT e.first_name, e.last_name, c.client_name, w.total_sales
+FROM Works_With w
+JOIN Employee e ON w.emp_id = e.emp_id
+JOIN Client c ON w.client_id = c.client_id;
+
+-- 65. Display employee names with their supervisor names.
+SELECT e.first_name AS employee_first, e.last_name AS employee_last,
+       s.first_name AS supervisor_first, s.last_name AS supervisor_last
+FROM Employee e
+JOIN Employee s ON e.super_id = s.emp_id;
+
+-- 66. Show employee names with total sales they generated.
+SELECT e.first_name, e.last_name, SUM(w.total_sales) AS total_sales
+FROM Employee e
+JOIN Works_With w ON e.emp_id = w.emp_id
+GROUP BY e.emp_id, e.first_name, e.last_name;
+
+-- 67. Show all clients with the employees who worked with them.
+SELECT c.client_name, e.first_name, e.last_name
+FROM Works_With w
+JOIN Client c ON w.client_id = c.client_id
+JOIN Employee e ON w.emp_id = e.emp_id;
+
+-- 68. List all suppliers with their corresponding branch names.
+SELECT bs.supplier_name, bs.supply_type, b.branch_name
+FROM Branch_Supplier bs
+JOIN Branch b ON bs.branch_id = b.branch_id;
+
+-- 69. Show employees who belong to Stamford branch.
+SELECT e.*
+FROM Employee e
+JOIN Branch b ON e.branch_id = b.branch_id
+WHERE b.branch_name = 'Stamford';
+
+-- 70. Display the names of employees who manage a branch.
+SELECT e.first_name, e.last_name, b.branch_name
+FROM Branch b
+JOIN Employee e ON b.mgr_id = e.emp_id;
+
+-- 71. Find employees working for the same branch as "David Wallace".
+SELECT e.first_name, e.last_name
+FROM Employee e
+WHERE e.branch_id = (
+    SELECT branch_id FROM Employee WHERE first_name = 'David' AND last_name = 'Wallace'
+)
+AND NOT (e.first_name = 'David' AND e.last_name = 'Wallace');
+
+-- 72. Show client names and their assigned branch manager.
+SELECT c.client_name, m.first_name, m.last_name AS manager_name
+FROM Client c
+JOIN Branch b ON c.branch_id = b.branch_id
+JOIN Employee m ON b.mgr_id = m.emp_id;
+
+-- 73. List employees who work in branches supplied by "Hammer Mill".
+SELECT DISTINCT e.first_name, e.last_name
+FROM Employee e
+JOIN Branch_Supplier bs ON e.branch_id = bs.branch_id
+WHERE bs.supplier_name = 'Hammer Mill';
+
+-- 74. Display employees along with their branch’s supplier names.
+SELECT e.first_name, e.last_name, bs.supplier_name
+FROM Employee e
+JOIN Branch_Supplier bs ON e.branch_id = bs.branch_id;
+
+-- 75. Show employees who sold to "FedEx".
+SELECT DISTINCT e.first_name, e.last_name
+FROM Works_With w
+JOIN Employee e ON w.emp_id = e.emp_id
+JOIN Client c ON w.client_id = c.client_id
+WHERE c.client_name = 'FedEx';
+
+-- 76. Display total sales grouped by branch_name.
+SELECT b.branch_name, SUM(w.total_sales) AS total_sales
+FROM Works_With w
+JOIN Employee e ON w.emp_id = e.emp_id
+JOIN Branch b ON e.branch_id = b.branch_id
+GROUP BY b.branch_name;
+
+-- 77. Show all supervisors along with their subordinates.
+SELECT s.first_name AS supervisor_first, s.last_name AS supervisor_last,
+       e.first_name AS subordinate_first, e.last_name AS subordinate_last
+FROM Employee e
+JOIN Employee s ON e.super_id = s.emp_id;
+
+-- 78. Display each branch manager and their start date.
+SELECT e.first_name, e.last_name, b.branch_name, b.mgr_start_date
+FROM Branch b
+JOIN Employee e ON b.mgr_id = e.emp_id;
+
+-- 79. Show client names along with all employees who made sales to them.
+SELECT c.client_name, e.first_name, e.last_name
+FROM Works_With w
+JOIN Client c ON w.client_id = c.client_id
+JOIN Employee e ON w.emp_id = e.emp_id;
+
+-- 80. Display suppliers that provide supplies to branches handling "FedEx".
+SELECT DISTINCT bs.supplier_name, bs.supply_type
+FROM Branch_Supplier bs
+JOIN Branch b ON bs.branch_id = b.branch_id
+JOIN Client c ON b.branch_id = c.branch_id
+WHERE c.client_name = 'FedEx';
+
+-- 81. Find employees earning more than the average salary.
+SELECT * 
+FROM Employee
+WHERE salary > (SELECT AVG(salary) FROM Employee);
+
+-- 82. Show employees who earn above their branch average.
+SELECT e.*
+FROM Employee e
+JOIN (
+    SELECT branch_id, AVG(salary) AS branch_avg
+    FROM Employee
+    GROUP BY branch_id
+) b ON e.branch_id = b.branch_id
+WHERE e.salary > b.branch_avg;
+
+-- 83. Find employees older than their supervisor.
+SELECT e.first_name, e.last_name, e.birth_date, s.first_name AS supervisor_first, s.birth_date AS supervisor_birth
+FROM Employee e
+JOIN Employee s ON e.super_id = s.emp_id
+WHERE e.birth_date < s.birth_date;
+
+-- 84. Display branch managers who manage employees older than themselves.
+SELECT DISTINCT m.first_name, m.last_name, b.branch_name
+FROM Branch b
+JOIN Employee m ON b.mgr_id = m.emp_id
+JOIN Employee e ON e.branch_id = b.branch_id
+WHERE e.birth_date < m.birth_date;
+
+-- 85. Show clients who have been worked with by more than 2 employees.
+SELECT c.client_name, COUNT(DISTINCT w.emp_id) AS num_employees
+FROM Works_With w
+JOIN Client c ON w.client_id = c.client_id
+GROUP BY c.client_id, c.client_name
+HAVING COUNT(DISTINCT w.emp_id) > 2;
+
+-- 86. Find branches with more than 2 employees.
+SELECT branch_id, COUNT(*) AS employee_count
+FROM Employee
+GROUP BY branch_id
+HAVING COUNT(*) > 2;
+
+-- 87. Display employees who made sales greater than 100,000.
+SELECT DISTINCT e.first_name, e.last_name
+FROM Works_With w
+JOIN Employee e ON w.emp_id = e.emp_id
+WHERE w.total_sales > 100000;
+
+-- 88. Find clients who have sales totaling above 150,000.
+SELECT c.client_name, SUM(w.total_sales) AS total_sales
+FROM Works_With w
+JOIN Client c ON w.client_id = c.client_id
+GROUP BY c.client_name
+HAVING SUM(w.total_sales) > 150000;
+
+-- 89. Show employees who worked with at least 2 different clients.
+SELECT e.first_name, e.last_name, COUNT(DISTINCT w.client_id) AS clients_count
+FROM Works_With w
+JOIN Employee e ON w.emp_id = e.emp_id
+GROUP BY e.emp_id, e.first_name, e.last_name
+HAVING COUNT(DISTINCT w.client_id) >= 2;
+
+-- 90. List supervisors who manage more than 1 employee.
+SELECT s.first_name, s.last_name, COUNT(e.emp_id) AS subordinates
+FROM Employee e
+JOIN Employee s ON e.super_id = s.emp_id
+GROUP BY s.emp_id, s.first_name, s.last_name
+HAVING COUNT(e.emp_id) > 1;
+
+-- 91. Find suppliers providing more than one supply type.
+SELECT supplier_name, COUNT(DISTINCT supply_type) AS supply_types
+FROM Branch_Supplier
+GROUP BY supplier_name
+HAVING COUNT(DISTINCT supply_type) > 1;
+
+-- 92. Display branches with no suppliers.
+SELECT b.branch_id, b.branch_name
+FROM Branch b
+LEFT JOIN Branch_Supplier bs ON b.branch_id = bs.branch_id
+WHERE bs.branch_id IS NULL;
+
+-- 93. Show employees who don’t supervise anyone.
+SELECT e.emp_id, e.first_name, e.last_name
+FROM Employee e
+LEFT JOIN Employee sub ON e.emp_id = sub.super_id
+WHERE sub.emp_id IS NULL;
+
+-- 94. Display employees who don’t work with any client.
+SELECT e.emp_id, e.first_name, e.last_name
+FROM Employee e
+LEFT JOIN Works_With w ON e.emp_id = w.emp_id
+WHERE w.emp_id IS NULL;
+
+-- 95. Find clients not handled by branch_id = 2.
+SELECT c.*
+FROM Client c
+WHERE c.branch_id <> 2;
+
+-- 96. Show employees who share the same salary.
+SELECT e1.emp_id, e1.first_name, e1.last_name, e1.salary
+FROM Employee e1
+JOIN Employee e2 ON e1.salary = e2.salary AND e1.emp_id <> e2.emp_id
+ORDER BY e1.salary;
+
+-- 97. Find the youngest employee.
+SELECT *
+FROM Employee
+ORDER BY birth_date DESC
+LIMIT 1;
+
+-- 98. Show employees who were born in the same year.
+SELECT YEAR(birth_date) AS birth_year, GROUP_CONCAT(first_name, ' ', last_name) AS employees
+FROM Employee
+GROUP BY YEAR(birth_date)
+HAVING COUNT(*) > 1;
+
+-- 99. Find the branch with the earliest manager start date.
+SELECT branch_name, mgr_start_date
+FROM Branch
+ORDER BY mgr_start_date ASC
+LIMIT 1;
+
+-- 100. Show all employees whose salary is higher than the maximum salary in branch 2.
+SELECT *
+FROM Employee
+WHERE salary > (
+    SELECT MAX(salary) FROM Employee WHERE branch_id = 2
+);

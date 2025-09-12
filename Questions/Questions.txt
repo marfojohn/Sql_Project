@@ -1,0 +1,209 @@
+A. Basic SELECT (1–20)
+
+Select all records from the Employee table.
+
+Display first_name and last_name of all employees.
+
+Show all employees who are female.
+
+Get the birth_date of employee with emp_id = 103.
+
+Display all branch names.
+
+Show all employees in branch_id = 2.
+
+Retrieve all suppliers and their supply types.
+
+List all client names.
+
+Show the salary of all employees in ascending order.
+
+Get details of employee "Michael Scott".
+
+Show the branch where "Jim Halpert" works.
+
+Display all employees with salary greater than 100,000.
+
+Show all clients handled by branch 3.
+
+Display names of employees born after 1970.
+
+Retrieve all suppliers that provide paper.
+
+Find all male employees.
+
+Show the total number of employees in each branch.
+
+Get details of the employee with the highest salary.
+
+Retrieve all employees who don’t have a supervisor (super_id IS NULL).
+
+List all unique supply types.
+
+B. Filtering & Conditions (21–40)
+
+Show employees with salary between 60,000 and 100,000.
+
+Get employees whose last name starts with "H".
+
+Find employees born before 1965.
+
+List employees who earn less than 80,000.
+
+Display clients whose name contains "FedEx".
+
+Show employees whose first name ends with "n".
+
+Find all suppliers whose name contains "Uni".
+
+Show employees with super_id = 102.
+
+Display employees working in branch_id = 1 or 2.
+
+List all employees not in branch 3.
+
+Show employees with salary not equal to 71,000.
+
+Find employees born in September.
+
+Display clients whose client_id is greater than 402.
+
+Show employees with salary divisible by 5,000.
+
+Display employees whose last_name is "Hudson".
+
+Find clients whose name length is greater than 10 characters.
+
+Show all employees whose salary is greater than their supervisor’s salary.
+
+List employees with salary equal to branch manager’s salary.
+
+Display employees with birth_date in the 1960s.
+
+Show clients with branch_id not equal to 2.
+
+C. Aggregate Queries (41–60)
+
+Count total number of employees.
+
+Find the average salary of employees.
+
+Get the maximum salary.
+
+Get the minimum salary.
+
+Find the total salary expense for branch_id = 3.
+
+Count how many female employees exist.
+
+Find the average salary of male employees.
+
+Count total number of clients in each branch.
+
+Get the highest total_sales value.
+
+Calculate the sum of all sales.
+
+Find the average total_sales per employee.
+
+Count how many suppliers each branch has.
+
+Find the supplier count for branch_id = 2.
+
+Get the number of employees supervised by emp_id = 100.
+
+Find total sales handled by employee 105.
+
+Show total sales for each client.
+
+Show the branch with the maximum number of clients.
+
+Find the employee with the highest total sales.
+
+Show the average salary of employees in each branch.
+
+Count the number of supervisors (employees who are referenced in super_id).
+
+D. Joins (61–80)
+
+Display employee names with their branch name.
+
+Show branch manager names with branch_name.
+
+List client names along with their branch_name.
+
+Show employees and the clients they worked with (Works_With).
+
+Display employee names with their supervisor names.
+
+Show employee names with total sales they generated.
+
+Show all clients with the employees who worked with them.
+
+List all suppliers with their corresponding branch names.
+
+Show employees who belong to Stamford branch.
+
+Display the names of employees who manage a branch.
+
+Find employees working for the same branch as "David Wallace".
+
+Show client names and their assigned branch manager.
+
+List employees who work in branches supplied by "Hammer Mill".
+
+Display employees along with their branch’s supplier names.
+
+Show employees who sold to "FedEx".
+
+Display total sales grouped by branch_name.
+
+Show all supervisors along with their subordinates.
+
+Display each branch manager and their start date.
+
+Show client names along with all employees who made sales to them.
+
+Display suppliers that provide supplies to branches handling "FedEx".
+
+E. Advanced Queries (81–100)
+
+Find employees earning more than the average salary.
+
+Show employees who earn above their branch average.
+
+Find employees older than their supervisor.
+
+Display branch managers who manage employees older than themselves.
+
+Show clients who have been worked with by more than 2 employees.
+
+Find branches with more than 2 employees.
+
+Display employees who made sales greater than 100,000.
+
+Find clients who have sales totaling above 150,000.
+
+Show employees who worked with at least 2 different clients.
+
+List supervisors who manage more than 1 employee.
+
+Find suppliers providing more than one supply type.
+
+Display branches with no suppliers.
+
+Show employees who don’t supervise anyone.
+
+Display employees who don’t work with any client.
+
+Find clients not handled by branch_id = 2.
+
+Show employees who share the same salary.
+
+Find the youngest employee.
+
+Show employees who were born in the same year.
+
+Find the branch with the earliest manager start date.
+
+Show all employees whose salary is higher than the maximum salary in branch 2.
