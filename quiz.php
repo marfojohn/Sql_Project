@@ -247,7 +247,6 @@ function compareResultSets($set1, $set2) {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -451,26 +450,6 @@ function compareResultSets($set1, $set2) {
             margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
-        }
-
-        .question-item.answered {
-            background-color: #d4edda;
-        }
-        
-        .question-item.answered.correct {
-            background-color: #d4edda;
-        }
-        
-        .question-item.answered.incorrect {
-            background-color: #f8d7da;
-        }
-        
-        .dark-mode .question-item.answered.correct {
-            background-color: #155724;
-        }
-        
-        .dark-mode .question-item.answered.incorrect {
-            background-color: #721c24;
         }
 
         .difficulty {
@@ -895,6 +874,32 @@ function compareResultSets($set1, $set2) {
             transform: scale(1.05);
         }
 
+        /* Added style for already answered questions */
+        .question-item.answered {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .question-item.answered.correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .question-item.answered.incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .dark-mode .question-item.answered.correct {
+            background-color: #155724;
+            color: white;
+        }
+        
+        .dark-mode .question-item.answered.incorrect {
+            background-color: #721c24;
+            color: white;
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -1231,6 +1236,15 @@ function compareResultSets($set1, $set2) {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('new_quiz')) {
             localStorage.removeItem('sqlQuizState');
+            // Also clear server-side session data
+            fetch('clear_quiz_session.php')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Session cleared:', data);
+                })
+                .catch(error => {
+                    console.error('Error clearing session:', error);
+                });
         }
         
         // Load saved state if available
@@ -1272,8 +1286,8 @@ function compareResultSets($set1, $set2) {
         scoreEl.textContent = score;
         loadQuestion(currentQuestionIndex);
         updateTimerDisplay();
+        updateQuestionItemsStyling();
     }
-
 
     // Save quiz state to localStorage
     function saveQuizState() {
@@ -1281,61 +1295,35 @@ function compareResultSets($set1, $set2) {
             currentQuestionIndex: currentQuestionIndex,
             score: score,
             userAnswers: userAnswers,
-            answeredQuestions: answeredQuestions, // Save answered questions
             timeLeft: timeLeft,
             quizStartTime: quizStartTime
         };
         
         localStorage.setItem('sqlQuizState', JSON.stringify(state));
-    }
-
-    // Load saved quiz state from localStorage
-    function loadQuizState() {
-        // Load saved state if available
-        const savedState = localStorage.getItem('sqlQuizState');
-        if (savedState) {
-            try {
-                const state = JSON.parse(savedState);
-                currentQuestionIndex = state.currentQuestionIndex || 0;
-                score = state.score || 0;
-                userAnswers = state.userAnswers || {};
-                answeredQuestions = state.answeredQuestions || []; // Load answered questions
-                timeLeft = state.timeLeft || 1800;
-                quizStartTime = state.quizStartTime || Date.now();
-                
-                console.log("Loaded saved state:", state);
-            } catch (e) {
-                console.error("Error loading saved state:", e);
-                // Reset to defaults if there's an error
-                currentQuestionIndex = 0;
-                score = 0;
-                userAnswers = {};
-                answeredQuestions = [];
-                timeLeft = 1800;
-                quizStartTime = Date.now();
-            }
-        }
         
-        // Update UI with loaded state
-        scoreEl.textContent = score;
-        loadQuestion(currentQuestionIndex);
-        updateTimerDisplay();
-        
-        // Update question items styling based on answered status
-        updateQuestionItemsStyling();
+        // Also save to server session via AJAX
+        saveQuizStateToServer();
     }
-
-    // Update question items styling based on answered status
-    function updateQuestionItemsStyling() {
-        const questionItems = document.querySelectorAll('.question-item');
-        questionItems.forEach((item, index) => {
-            const questionId = questions[index].id;
-            if (answeredQuestions.includes(questionId)) {
-                // Check if the answer was correct by verifying the user's answer
-                // For simplicity, we'll assume it was correct if it's in answeredQuestions
-                // In a real implementation, you might want to track correct/incorrect separately
-                item.classList.add('answered', 'correct');
+    
+    // Save quiz state to server session
+    function saveQuizStateToServer() {
+        const formData = new FormData();
+        formData.append('current_question', currentQuestionIndex);
+        formData.append('score', score);
+        formData.append('time_left', timeLeft);
+        
+        fetch('save_quiz_state.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to save state to server:', data.error);
             }
+        })
+        .catch(error => {
+            console.error('Error saving state to server:', error);
         });
     }
 
@@ -1483,6 +1471,9 @@ function compareResultSets($set1, $set2) {
         window.addEventListener('beforeunload', () => {
             saveQuizState();
         });
+        
+        // Theme toggle
+        themeToggle.addEventListener('click', toggleTheme);
     }
 
     // Load a question
@@ -1693,129 +1684,138 @@ function compareResultSets($set1, $set2) {
 
     // Validate the answer against the correct query
     // Enhanced function to validate answer
-        async function validateAnswer(query) {
-            const question = questions[currentQuestionIndex];
-            const questionId = question.id;
+    async function validateAnswer(query) {
+        const question = questions[currentQuestionIndex];
+        const questionId = question.id;
+        
+        // Check if this question has already been answered correctly
+        if (answeredQuestions.includes(questionId)) {
+            feedbackErrorEl.style.display = 'block';
+            feedbackSuccessEl.style.display = 'none';
+            feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> You have already answered this question correctly.';
             
-            // Check if this question has already been answered correctly
-            if (answeredQuestions.includes(questionId)) {
-                feedbackErrorEl.style.display = 'block';
-                feedbackSuccessEl.style.display = 'none';
-                feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> You have already answered this question correctly.';
-                
-                // Restore button state
-                submitAnswerBtn.textContent = 'Submit Answer';
-                submitAnswerBtn.disabled = false;
-                return;
-            }
+            // Restore button state
+            submitAnswerBtn.textContent = 'Submit Answer';
+            submitAnswerBtn.disabled = false;
+            return;
+        }
+        
+        try {
+            // Show loading state
+            const originalText = submitAnswerBtn.textContent;
+            submitAnswerBtn.innerHTML = '<span class="loading"></span> Checking...';
+            submitAnswerBtn.disabled = true;
             
-            try {
-                // Show loading state
-                const originalText = submitAnswerBtn.textContent;
-                submitAnswerBtn.innerHTML = '<span class="loading"></span> Checking...';
-                submitAnswerBtn.disabled = true;
+            // Send both queries to server for comparison
+            const response = await fetch("validate_query.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    user_query: query, 
+                    correct_query: question.solution 
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                feedbackSuccessEl.style.display = 'block';
+                feedbackErrorEl.style.display = 'none';
                 
-                // Send both queries to server for comparison
-                const response = await fetch("validate_query.php", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ 
-                        user_query: query, 
-                        correct_query: question.solution 
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    feedbackSuccessEl.style.display = 'block';
-                    feedbackErrorEl.style.display = 'none';
-                    
-                    // Only award points if not already answered correctly
-                    if (!answeredQuestions.includes(questionId)) {
-                        // Award points based on difficulty
-                        if (question.difficulty === 'basic') {
-                            score += 10;
-                        } else if (question.difficulty === 'intermediate') {
-                            score += 20;
-                        } else if (question.difficulty === 'advanced') {
-                            score += 30;
-                        }
-                        
-                        // Mark this question as answered correctly
-                        answeredQuestions.push(questionId);
-                        
-                        // Update the question item styling
-                        const questionItems = document.querySelectorAll('.question-item');
-                        if (questionItems[currentQuestionIndex]) {
-                            questionItems[currentQuestionIndex].classList.add('answered', 'correct');
-                        }
-                        
-                        scoreEl.textContent = score;
-                        saveQuizState();
+                // Only award points if not already answered correctly
+                if (!answeredQuestions.includes(questionId)) {
+                    // Award points based on difficulty
+                    if (question.difficulty === 'basic') {
+                        score += 10;
+                    } else if (question.difficulty === 'intermediate') {
+                        score += 20;
+                    } else if (question.difficulty === 'advanced') {
+                        score += 30;
                     }
-                } else {
-                    feedbackErrorEl.style.display = 'block';
-                    feedbackSuccessEl.style.display = 'none';
                     
-                    // Update the question item styling for incorrect answer
+                    // Mark this question as answered correctly
+                    answeredQuestions.push(questionId);
+                    
+                    // Update the question item styling
                     const questionItems = document.querySelectorAll('.question-item');
                     if (questionItems[currentQuestionIndex]) {
-                        questionItems[currentQuestionIndex].classList.add('answered', 'incorrect');
+                        questionItems[currentQuestionIndex].classList.add('answered', 'correct');
                     }
                     
-                    // Show specific error message if available
-                    if (result.error) {
-                        feedbackErrorEl.innerHTML = `<i class="fas fa-times-circle"></i> ${result.error}`;
-                    }
+                    scoreEl.textContent = score;
+                    saveQuizState();
                     
-                    // Hide error message after 5 seconds
-                    setTimeout(() => {
-                        feedbackErrorEl.style.display = 'none';
-                    }, 5000);
+                    // Save answered questions to server
+                    saveAnsweredQuestionsToServer();
                 }
-            } catch (error) {
-                console.error("Error validating answer:", error);
+            } else {
                 feedbackErrorEl.style.display = 'block';
                 feedbackSuccessEl.style.display = 'none';
-                feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> Error validating query. Please try again.';
+                
+                // Update the question item styling for incorrect answer
+                const questionItems = document.querySelectorAll('.question-item');
+                if (questionItems[currentQuestionIndex]) {
+                    questionItems[currentQuestionIndex].classList.add('answered', 'incorrect');
+                }
+                
+                // Show specific error message if available
+                if (result.error) {
+                    feedbackErrorEl.innerHTML = `<i class="fas fa-times-circle"></i> ${result.error}`;
+                }
                 
                 // Hide error message after 5 seconds
                 setTimeout(() => {
                     feedbackErrorEl.style.display = 'none';
                 }, 5000);
-            } finally {
-                // Restore button state
-                submitAnswerBtn.textContent = 'Submit Answer';
-                submitAnswerBtn.disabled = false;
             }
+        } catch (error) {
+            console.error("Error validating answer:", error);
+            feedbackErrorEl.style.display = 'block';
+            feedbackSuccessEl.style.display = 'none';
+            feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> Error validating query. Please try again.';
+            
+            // Hide error message after 5 seconds
+            setTimeout(() => {
+                feedbackErrorEl.style.display = 'none';
+            }, 5000);
+        } finally {
+            // Restore button state
+            submitAnswerBtn.textContent = 'Submit Answer';
+            submitAnswerBtn.disabled = false;
         }
+    }
+    
+    // Save answered questions to server
+    function saveAnsweredQuestionsToServer() {
+        const formData = new FormData();
+        formData.append('answered_questions', JSON.stringify(answeredQuestions));
+        
+        fetch('save_answered_questions.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to save answered questions:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving answered questions:', error);
+        });
+    }
 
-    // Compare query results for validation
-    function compareResults(userResult, correctResult) {
-        // Simple comparison: check if column names match and data has same rows
-        if (userResult.columns.length !== correctResult.columns.length) {
-            return false;
-        }
-        
-        // Check if all column names match (order matters in SQL)
-        for (let i = 0; i < userResult.columns.length; i++) {
-            if (userResult.columns[i] !== correctResult.columns[i]) {
-                return false;
+    // Update question items styling based on answered status
+    function updateQuestionItemsStyling() {
+        const questionItems = document.querySelectorAll('.question-item');
+        questionItems.forEach((item, index) => {
+            const questionId = questions[index].id;
+            if (answeredQuestions.includes(questionId)) {
+                item.classList.add('answered', 'correct');
             }
-        }
-        
-        // Check if row counts match
-        if (userResult.data.length !== correctResult.data.length) {
-            return false;
-        }
-        
-        // For a more robust implementation, you might want to compare the actual data
-        // This is a simple implementation that might not work for all cases
-        
-        return true;
+        });
     }
 
     // Finish the quiz (when time runs out or all questions answered)
@@ -1840,66 +1840,37 @@ function compareResultSets($set1, $set2) {
         localStorage.removeItem('sqlQuizState');
     }
 
-        // Theme toggle functionality
-        function toggleTheme() {
-            const body = document.body;
-            const isDarkMode = body.classList.toggle('dark-mode');
-            
-            // Update icon
-            themeIcon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
-            
-            // Save preference
-            localStorage.setItem('darkMode', isDarkMode);
-            
-            // Update CodeMirror theme
-            const theme = isDarkMode ? 'monokai' : 'eclipse';
-            userAnswerEditor.setOption('theme', theme);
-            correctAnswerEditor.setOption('theme', theme);
-        }
+    // Theme toggle functionality
+    function toggleTheme() {
+        const body = document.body;
+        const isDarkMode = body.classList.toggle('dark-mode');
         
-        // Check for saved theme preference or respect OS preference
-        function initTheme() {
-            const savedTheme = localStorage.getItem('darkMode');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            if (savedTheme === null) {
-                // No saved preference, use OS preference
-                if (prefersDark) {
-                    document.body.classList.add('dark-mode');
-                    themeIcon.className = 'fas fa-sun';
-                }
-            } else if (savedTheme === 'true') {
+        // Update icon
+        themeIcon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+        
+        // Save preference
+        localStorage.setItem('darkMode', isDarkMode);
+    }
+    
+    // Check for saved theme preference or respect OS preference
+    function initTheme() {
+        const savedTheme = localStorage.getItem('darkMode');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === null) {
+            // No saved preference, use OS preference
+            if (prefersDark) {
                 document.body.classList.add('dark-mode');
                 themeIcon.className = 'fas fa-sun';
             }
+        } else if (savedTheme === 'true') {
+            document.body.classList.add('dark-mode');
+            themeIcon.className = 'fas fa-sun';
         }
-        
-        // Event listeners
-        prevQuestionBtn.addEventListener('click', () => {
-            if (currentQuestionIndex > 0) {
-                loadQuestion(currentQuestionIndex - 1);
-            }
-        });
-        
-        nextQuestionBtn.addEventListener('click', () => {
-            if (currentQuestionIndex < questionIds.length - 1) {
-                loadQuestion(currentQuestionIndex + 1);
-            }
-        });
-        
-        themeToggle.addEventListener('click', toggleTheme);
-    
-       // Add event listener for new quiz button
-        document.getElementById('new-quiz-btn').addEventListener('click', function(e) {
-            if (Object.keys(userAnswers).length > 0) {
-                if (!confirm('Starting a new quiz will erase your current progress. Are you sure?')) {
-                    e.preventDefault();
-                }
-            }
-        }); 
+    }
 
-        // Initialize the quiz when the page loads
-        document.addEventListener('DOMContentLoaded', initQuiz);
+    // Initialize the quiz when the page loads
+    document.addEventListener('DOMContentLoaded', initQuiz);
 </script>
 </body>
 </html>
