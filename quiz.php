@@ -452,6 +452,50 @@ function compareResultSets($set1, $set2) {
             gap: 10px;
         }
 
+        .btn.disabled {
+            position: relative;
+            opacity: 0.9;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+            color: white !important;
+            border: 1px solid #5a6268 !important;
+            overflow: hidden;
+            border-radius: 5px !important;
+            padding: 10px 20px !important;
+        }
+
+        .btn.disabled::after {
+            content: " ✓";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .btn.disabled:hover {
+            opacity: 0.9;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn.disabled::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s;
+        }
+
+        .btn.disabled:hover::before {
+            left: 100%;
+        }
         .difficulty {
             padding: 5px 10px;
             border-radius: 20px;
@@ -1226,7 +1270,28 @@ function compareResultSets($set1, $set2) {
         codeEditor.refresh();
     }
 
-   // Initialize the quiz
+    // Function to update submit button state based on whether question is answered
+    function updateSubmitButtonState() {
+        const question = questions[currentQuestionIndex];
+        const questionId = question.id;
+        
+        // Disable submit button if question has already been answered correctly
+        if (answeredQuestions.includes(questionId)) {
+            submitAnswerBtn.disabled = true;
+            submitAnswerBtn.textContent = 'Already Answered';
+            submitAnswerBtn.classList.add('disabled');
+            submitAnswerBtn.classList.remove('btn-success');
+            submitAnswerBtn.classList.add('btn-secondary');
+        } else {
+            submitAnswerBtn.disabled = false;
+            submitAnswerBtn.textContent = 'Submit Answer';
+            submitAnswerBtn.classList.remove('disabled');
+            submitAnswerBtn.classList.remove('btn-secondary');
+            submitAnswerBtn.classList.add('btn-success');
+        }
+    }
+
+    // Initialize the quiz
     function initQuiz() {
         console.log("Initializing quiz with", questions.length, "questions");
         initTheme();
@@ -1252,6 +1317,9 @@ function compareResultSets($set1, $set2) {
         
         startTimer();
         updateProgress();
+        
+        // Update submit button state
+        updateSubmitButtonState();
         
         // Add event listeners
         addEventListeners();
@@ -1304,7 +1372,7 @@ function compareResultSets($set1, $set2) {
         // Also save to server session via AJAX
         saveQuizStateToServer();
     }
-    
+
     // Save quiz state to server session
     function saveQuizStateToServer() {
         const formData = new FormData();
@@ -1520,6 +1588,9 @@ function compareResultSets($set1, $set2) {
                 item.classList.remove('active');
             }
         });
+        
+        // Update submit button state
+        updateSubmitButtonState();
     }
 
     // Start the timer
@@ -1747,6 +1818,9 @@ function compareResultSets($set1, $set2) {
                     scoreEl.textContent = score;
                     saveQuizState();
                     
+                    // Update submit button state
+                    updateSubmitButtonState();
+                    
                     // Save answered questions to server
                     saveAnsweredQuestionsToServer();
                 }
@@ -1786,7 +1860,7 @@ function compareResultSets($set1, $set2) {
             submitAnswerBtn.disabled = false;
         }
     }
-    
+
     // Save answered questions to server
     function saveAnsweredQuestionsToServer() {
         const formData = new FormData();
@@ -1851,7 +1925,7 @@ function compareResultSets($set1, $set2) {
         // Save preference
         localStorage.setItem('darkMode', isDarkMode);
     }
-    
+
     // Check for saved theme preference or respect OS preference
     function initTheme() {
         const savedTheme = localStorage.getItem('darkMode');

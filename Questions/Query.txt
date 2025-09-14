@@ -1,13 +1,2 @@
-Got you 👌. You already have the company database schema with all 5 tables.
-
-Now your plan is:
-
-Each student gets 10 random SQL querying questions.
-
-30 minutes to solve them by writing correct queries.
-
-The database already exists, so students will query live against it.
-
-Any additions should tie back to the webapp (not new tables).
-
-Here’s how I’d structure this:
+Tomorrow prompt 
+After a user have submitted a answer for a question disable the submit button. only enable it for a unanswered question  
