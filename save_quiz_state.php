@@ -1,14 +1,25 @@
 <?php
 session_start();
-header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['quiz_current_question'] = $_POST['current_question'] ?? 0;
-    $_SESSION['quiz_score'] = $_POST['score'] ?? 0;
-    $_SESSION['quiz_time_left'] = $_POST['time_left'] ?? 1800;
+    $response = ['success' => false];
     
-    echo json_encode(['success' => true]);
-} else {
-    echo json_encode(['success' => false, 'error' => 'Invalid request method']);
+    try {
+        // Store quiz state in session
+        $_SESSION['quiz_state'] = [
+            'current_question' => $_POST['current_question'],
+            'score' => $_POST['score'],
+            'time_left' => $_POST['time_left'],
+            'quiz_id' => $_POST['quiz_id'],
+            'timestamp' => time()
+        ];
+        
+        $response['success'] = true;
+    } catch (Exception $e) {
+        $response['error'] = $e->getMessage();
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
 }
-?>

@@ -18,21 +18,31 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit();
 }
 
+// Handle NEW QUIZ request - Clear everything
+if (isset($_GET['new_quiz'])) {
+    // Clear all quiz-related session data
+    unset($_SESSION['quiz_questions']);
+    unset($_SESSION['quiz_start_time']);
+    unset($_SESSION['answered_questions']);
+    unset($_SESSION['quiz_id']);
+    
+    // Also clear any stored quiz state from previous sessions
+    if (isset($_SESSION['current_quiz_state'])) {
+        unset($_SESSION['current_quiz_state']);
+    }
+    
+    // Redirect to avoid parameter in URL
+    header("Location: quiz.php");
+    exit();
+}
+
 // Initialize answered questions array if not set
 if (!isset($_SESSION['answered_questions'])) {
     $_SESSION['answered_questions'] = [];
 }
 
-// Fetch questions from database or use stored ones
-if (!isset($_SESSION['quiz_questions']) || isset($_GET['new_quiz'])) {
-    // Clear any existing quiz questions if starting a new quiz
-    if (isset($_GET['new_quiz'])) {
-        unset($_SESSION['quiz_questions']);
-        unset($_SESSION['quiz_start_time']);
-        unset($_SESSION['answered_questions']); // Clear answered questions on new quiz
-        // Also clear any saved state from localStorage via JavaScript later
-    }
-    
+// Check if we need to generate NEW questions (no existing quiz)
+if (!isset($_SESSION['quiz_questions'])) {
     try {
         $pdo = getDBConnection();
         
@@ -85,7 +95,8 @@ if (!isset($_SESSION['quiz_questions']) || isset($_GET['new_quiz'])) {
         // Store questions in session
         $_SESSION['quiz_questions'] = $formattedQuestions;
         $_SESSION['quiz_start_time'] = time();
-        $_SESSION['answered_questions'] = []; // Reset answered questions
+        $_SESSION['answered_questions'] = [];
+        $_SESSION['quiz_id'] = uniqid('quiz_', true);
         
     } catch (PDOException $e) {
         $error = "Database error: " . $e->getMessage();
@@ -272,7 +283,7 @@ function compareResultSets($set1, $set2) {
                     <button class="theme-toggle" id="theme-toggle">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <a href="quiz.php?new_quiz=true" class="btn btn-secondary" id="new-quiz-btn">New Quiz</a>
+                    <a href="quiz.php?new_quiz=1" class="btn btn-secondary" id="new-quiz-btn">New Quiz</a>
                     <button class="logout-btn" id="logout-btn">Logout</button>
                     <div class="timer" id="timer">30:00</div>
                 </div>
@@ -428,7 +439,7 @@ function compareResultSets($set1, $set2) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/sql-hint.min.js"></script>
 
     <script>
-     // Pass PHP data to JavaScript
+    // Pass PHP data to JavaScript
     const questions = <?php echo $questions_json; ?>;
     const totalQuestions = <?php echo count($formattedQuestions); ?>;
     const answeredQuestions = <?php echo json_encode($_SESSION['answered_questions'] ?? []); ?>;
@@ -476,6 +487,7 @@ function compareResultSets($set1, $set2) {
     const logoutBtn = document.getElementById('logout-btn');
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = themeToggle.querySelector('i');
+    const newQuizBtn = document.getElementById('new-quiz-btn');
 
     // Initialize CodeMirror editor
     function initCodeEditor() {
@@ -514,67 +526,122 @@ function compareResultSets($set1, $set2) {
         codeEditor.refresh();
     }
 
-   // Initialize the quiz
+    // Initialize the quiz
     function initQuiz() {
         console.log("Initializing quiz with", questions.length, "questions");
         initTheme();
         initCodeEditor();
-        
-        // Check if we need to clear localStorage (new quiz)
+
+        // Check if this is a NEW QUIZ request
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('new_quiz')) {
-            localStorage.removeItem('sqlQuizState');
-            // Also clear server-side session data
-            fetch('clear_quiz_session.php')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Session cleared:', data);
-                })
-                .catch(error => {
-                    console.error('Error clearing session:', error);
-                });
+            // COMPLETELY CLEAR everything for new quiz
+            clearQuizState();
+            console.log("Starting fresh quiz");
+        } else {
+            // Try to load saved progress
+            loadQuizState();
         }
-        
-        // Load saved state if available
-        loadQuizState();
-        
+
+        // Always start timer from current state
         startTimer();
         updateProgress();
-        
-        // Add event listeners
         addEventListeners();
     }
 
-    // Load saved quiz state from localStorage
+    // COMPLETELY clear all quiz state
+    function clearQuizState() {
+        // Clear localStorage
+        localStorage.removeItem('sqlQuizState');
+        localStorage.removeItem('quizTimeLeft');
+        
+        // Reset all variables to initial state
+        currentQuestionIndex = 0;
+        score = 0;
+        userAnswers = {};
+        timeLeft = 1800;
+        quizStartTime = Date.now();
+        
+        // Clear UI indicators
+        const questionItems = document.querySelectorAll('.question-item');
+        questionItems.forEach(item => {
+            item.classList.remove('answered', 'correct', 'incorrect', 'active');
+        });
+        
+        // Activate first question
+        if (questionItems.length > 0) {
+            questionItems[0].classList.add('active');
+        }
+        
+        // Reset progress bar
+        progressBarEl.style.width = '0%';
+        progressTextEl.textContent = `0/${questions.length} questions completed`;
+        
+        // Reset score display
+        scoreEl.textContent = '0';
+        
+        // Clear editor
+        if (codeEditor) {
+            codeEditor.setValue('');
+        }
+        
+        // Clear results
+        resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
+        
+        // Load first question
+        loadQuestion(0);
+        
+        console.log("Quiz state completely cleared for new quiz");
+    }
+
+    // Load saved quiz state
     function loadQuizState() {
-        // Load saved state if available
         const savedState = localStorage.getItem('sqlQuizState');
+        
         if (savedState) {
             try {
                 const state = JSON.parse(savedState);
+                
+                // Only load state if it's for the CURRENT quiz session
                 currentQuestionIndex = state.currentQuestionIndex || 0;
                 score = state.score || 0;
                 userAnswers = state.userAnswers || {};
-                timeLeft = state.timeLeft || 1800;
-                quizStartTime = state.quizStartTime || Date.now();
                 
-                console.log("Loaded saved state:", state);
+                // Load timer state if available
+                const savedTime = localStorage.getItem('quizTimeLeft');
+                timeLeft = savedTime ? parseInt(savedTime, 10) : 1800;
+                
+                // Update UI with loaded state
+                scoreEl.textContent = score;
+                loadQuestion(currentQuestionIndex);
+                updateQuestionItemsStyling();
+                updateProgress();
+                
+                console.log("Loaded saved quiz state:", state);
+                
             } catch (e) {
                 console.error("Error loading saved state:", e);
-                // Reset to defaults if there's an error
-                currentQuestionIndex = 0;
-                score = 0;
-                userAnswers = {};
-                timeLeft = 1800;
-                quizStartTime = Date.now();
+                // If corrupted, start fresh but don't clear completely
+                resetToDefaultState();
             }
+        } else {
+            // No saved state, initialize fresh but don't clear
+            resetToDefaultState();
         }
         
-        // Update UI with loaded state
+        updateTimerDisplay();
+    }
+
+    // Reset to default state without clearing everything
+    function resetToDefaultState() {
+        currentQuestionIndex = 0;
+        score = 0;
+        userAnswers = {};
+        timeLeft = 1800;
+        quizStartTime = Date.now();
+        
         scoreEl.textContent = score;
         loadQuestion(currentQuestionIndex);
-        updateTimerDisplay();
-        updateQuestionItemsStyling();
     }
 
     // Save quiz state to localStorage
@@ -584,235 +651,20 @@ function compareResultSets($set1, $set2) {
             score: score,
             userAnswers: userAnswers,
             timeLeft: timeLeft,
-            quizStartTime: quizStartTime
+            quizStartTime: quizStartTime,
+            quizId: '<?php echo $_SESSION["quiz_id"] ?? "default"; ?>'
         };
         
         localStorage.setItem('sqlQuizState', JSON.stringify(state));
+        localStorage.setItem('quizTimeLeft', timeLeft);
         
-        // Also save to server session via AJAX
-        saveQuizStateToServer();
-    }
-    
-    // Save quiz state to server session
-    function saveQuizStateToServer() {
-        const formData = new FormData();
-        formData.append('current_question', currentQuestionIndex);
-        formData.append('score', score);
-        formData.append('time_left', timeLeft);
-        
-        fetch('save_quiz_state.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                console.error('Failed to save state to server:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving state to server:', error);
-        });
-    }
-
-    // Redirect to review page
-    function redirectToReview() {
-        // Calculate time taken
-        const timeTaken = Math.floor((Date.now() - quizStartTime) / 1000);
-        const minutes = Math.floor(timeTaken / 60);
-        const seconds = timeTaken % 60;
-        const timeTakenStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Prepare question IDs for storage
-        const questionIds = {};
-        questions.forEach((question, index) => {
-            questionIds[index] = question.id; // Store the actual question ID from database
-        });
-        
-        // Mark unanswered questions as empty strings
-        for (let i = 0; i < questions.length; i++) {
-            if (!userAnswers.hasOwnProperty(i)) {
-                userAnswers[i] = ""; // Mark unanswered questions as empty
-            }
-        }
-        
-        // Create a form to submit the quiz data to store in database
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'quiz.php';
-        
-        const answersInput = document.createElement('input');
-        answersInput.type = 'hidden';
-        answersInput.name = 'user_answers';
-        answersInput.value = JSON.stringify(userAnswers);
-        form.appendChild(answersInput);
-        
-        const questionIdsInput = document.createElement('input');
-        questionIdsInput.type = 'hidden';
-        questionIdsInput.name = 'question_ids';
-        questionIdsInput.value = JSON.stringify(questionIds);
-        form.appendChild(questionIdsInput);
-        
-        const scoreInput = document.createElement('input');
-        scoreInput.type = 'hidden';
-        scoreInput.name = 'score';
-        scoreInput.value = score;
-        form.appendChild(scoreInput);
-        
-        const totalQuestionsInput = document.createElement('input');
-        totalQuestionsInput.type = 'hidden';
-        totalQuestionsInput.name = 'total_questions';
-        totalQuestionsInput.value = totalQuestions;
-        form.appendChild(totalQuestionsInput);
-        
-        const timeTakenInput = document.createElement('input');
-        timeTakenInput.type = 'hidden';
-        timeTakenInput.name = 'time_taken';
-        timeTakenInput.value = timeTakenStr;
-        form.appendChild(timeTakenInput);
-        
-        const completedInput = document.createElement('input');
-        completedInput.type = 'hidden';
-        completedInput.name = 'quiz_completed';
-        completedInput.value = 'true';
-        form.appendChild(completedInput);
-        
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    // Add all event listeners
-    function addEventListeners() {
-        runQueryBtn.addEventListener('click', runQuery);
-        
-        resetEditorBtn.addEventListener('click', () => {
-            codeEditor.setValue('');
-            resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
-        });
-        
-        submitAnswerBtn.addEventListener('click', submitAnswer);
-        
-        prevQuestionBtn.addEventListener('click', () => {
-            if (currentQuestionIndex > 0) {
-                currentQuestionIndex--;
-                loadQuestion(currentQuestionIndex);
-                saveQuizState();
-            }
-        });
-        
-        nextQuestionBtn.addEventListener('click', () => {
-            if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                loadQuestion(currentQuestionIndex);
-                saveQuizState();
-            }
-        });
-        
-        // Click on question items to navigate
-        document.querySelectorAll('.question-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const index = parseInt(item.getAttribute('data-index'));
-                if (!isNaN(index) && index >= 0 && index < questions.length) {
-                    currentQuestionIndex = index;
-                    loadQuestion(currentQuestionIndex);
-                    saveQuizState();
-                }
-            });
-        });
-        
-        reviewAnswersBtn.addEventListener('click', () => {
-            completionModal.style.display = 'none';
-            redirectToReview();
-        });
-        
-        tryAgainBtn.addEventListener('click', () => {
-            // Redirect to start a new quiz
-            window.location.href = 'quiz.php?new_quiz=true';
-        });
-        
-        // End quiz functionality
-        endQuizBtn.addEventListener('click', () => {
-            answeredCountEl.textContent = Object.keys(userAnswers).length;
-            currentScoreEl.textContent = score;
-            confirmEndModal.style.display = 'flex';
-        });
-        
-        cancelEndBtn.addEventListener('click', () => {
-            confirmEndModal.style.display = 'none';
-        });
-        
-        confirmEndBtn.addEventListener('click', () => {
-            confirmEndModal.style.display = 'none';
-            finishQuiz();
-        });
-        
-        // Logout functionality
-        logoutBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to logout? Your progress will be saved.')) {
-                // Save state before logging out
-                saveQuizState();
-                window.location.href = 'logout.php';
-            }
-        });
-        
-        // Save state before page unload
-        window.addEventListener('beforeunload', () => {
-            saveQuizState();
-        });
-        
-        // Theme toggle
-        themeToggle.addEventListener('click', toggleTheme);
-    }
-
-    // Load a question
-    function loadQuestion(index) {
-        if (questions.length === 0) {
-            questionTextEl.textContent = "No questions available. Please check your database connection.";
-            return;
-        }
-        
-        const question = questions[index];
-        questionNumberEl.textContent = index + 1;
-        questionTextEl.textContent = question.text;
-        
-        // Update difficulty
-        questionDifficultyEl.textContent = question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1);
-        questionDifficultyEl.className = 'difficulty ' + question.difficulty;
-        
-        // Load user's previous answer if exists
-        if (userAnswers[index]) {
-            codeEditor.setValue(userAnswers[index]);
-        } else {
-            codeEditor.setValue('');
-        }
-        
-        // Refresh editor to update display
-        codeEditor.refresh();
-        
-        // Hide feedback
-        feedbackSuccessEl.style.display = 'none';
-        feedbackErrorEl.style.display = 'none';
-        
-        // Clear result container
-        resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
-        
-        // Update navigation buttons
-        prevQuestionBtn.disabled = (index === 0);
-        nextQuestionBtn.disabled = (index === questions.length - 1);
-        
-        // Update question list highlighting
-        document.querySelectorAll('.question-item').forEach((item, i) => {
-            if (i === index) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
+        console.log("Quiz state saved");
     }
 
     // Start the timer
     function startTimer() {
         clearInterval(timerInterval);
+        
         updateTimerDisplay();
         
         timerInterval = setInterval(() => {
@@ -822,7 +674,7 @@ function compareResultSets($set1, $set2) {
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 finishQuiz();
-            } else if (timeLeft <= 300) { // 5 minutes left
+            } else if (timeLeft <= 300) {
                 timerEl.classList.add('warning');
             }
             
@@ -971,7 +823,6 @@ function compareResultSets($set1, $set2) {
     }
 
     // Validate the answer against the correct query
-    // Enhanced function to validate answer
     async function validateAnswer(query) {
         const question = questions[currentQuestionIndex];
         const questionId = question.id;
@@ -1106,6 +957,52 @@ function compareResultSets($set1, $set2) {
         });
     }
 
+    // Load a question
+    function loadQuestion(index) {
+        if (questions.length === 0) {
+            questionTextEl.textContent = "No questions available. Please check your database connection.";
+            return;
+        }
+        
+        const question = questions[index];
+        questionNumberEl.textContent = index + 1;
+        questionTextEl.textContent = question.text;
+        
+        // Update difficulty
+        questionDifficultyEl.textContent = question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1);
+        questionDifficultyEl.className = 'difficulty ' + question.difficulty;
+        
+        // Load user's previous answer if exists
+        if (userAnswers[index]) {
+            codeEditor.setValue(userAnswers[index]);
+        } else {
+            codeEditor.setValue('');
+        }
+        
+        // Refresh editor to update display
+        codeEditor.refresh();
+        
+        // Hide feedback
+        feedbackSuccessEl.style.display = 'none';
+        feedbackErrorEl.style.display = 'none';
+        
+        // Clear result container
+        resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
+        
+        // Update navigation buttons
+        prevQuestionBtn.disabled = (index === 0);
+        nextQuestionBtn.disabled = (index === questions.length - 1);
+        
+        // Update question list highlighting
+        document.querySelectorAll('.question-item').forEach((item, i) => {
+            if (i === index) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
     // Finish the quiz (when time runs out or all questions answered)
     function finishQuiz() {
         clearInterval(timerInterval);
@@ -1126,6 +1023,7 @@ function compareResultSets($set1, $set2) {
         
         // Clear saved state
         localStorage.removeItem('sqlQuizState');
+        localStorage.removeItem('quizTimeLeft');
     }
 
     // Theme toggle functionality
@@ -1155,6 +1053,163 @@ function compareResultSets($set1, $set2) {
             document.body.classList.add('dark-mode');
             themeIcon.className = 'fas fa-sun';
         }
+    }
+
+    // Add all event listeners
+    function addEventListeners() {
+        runQueryBtn.addEventListener('click', runQuery);
+        
+        resetEditorBtn.addEventListener('click', () => {
+            codeEditor.setValue('');
+            resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
+        });
+        
+        submitAnswerBtn.addEventListener('click', submitAnswer);
+        
+        prevQuestionBtn.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion(currentQuestionIndex);
+                saveQuizState();
+            }
+        });
+        
+        nextQuestionBtn.addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+                saveQuizState();
+            }
+        });
+        
+        // Click on question items to navigate
+        document.querySelectorAll('.question-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const index = parseInt(item.getAttribute('data-index'));
+                if (!isNaN(index) && index >= 0 && index < questions.length) {
+                    currentQuestionIndex = index;
+                    loadQuestion(currentQuestionIndex);
+                    saveQuizState();
+                }
+            });
+        });
+        
+        reviewAnswersBtn.addEventListener('click', () => {
+            completionModal.style.display = 'none';
+            redirectToReview();
+        });
+        
+        tryAgainBtn.addEventListener('click', () => {
+            // Redirect to start a new quiz
+            window.location.href = 'quiz.php?new_quiz=true';
+        });
+        
+        // End quiz functionality
+        endQuizBtn.addEventListener('click', () => {
+            answeredCountEl.textContent = Object.keys(userAnswers).length;
+            currentScoreEl.textContent = score;
+            confirmEndModal.style.display = 'flex';
+        });
+        
+        cancelEndBtn.addEventListener('click', () => {
+            confirmEndModal.style.display = 'none';
+        });
+        
+        confirmEndBtn.addEventListener('click', () => {
+            confirmEndModal.style.display = 'none';
+            finishQuiz();
+        });
+        
+        // Logout functionality
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout? Your progress will be saved.')) {
+                // Save state before logging out
+                saveQuizState();
+                window.location.href = 'logout.php';
+            }
+        });
+
+        // New Quiz button - confirm before starting new quiz
+        newQuizBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to start a new quiz? Your current progress will be lost.')) {
+                window.location.href = 'quiz.php?new_quiz=1';
+            }
+        });
+        
+        // Save state before page unload
+        window.addEventListener('beforeunload', () => {
+            saveQuizState();
+        });
+        
+        // Theme toggle
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    // Redirect to review page
+    function redirectToReview() {
+        // Calculate time taken
+        const timeTaken = Math.floor((Date.now() - quizStartTime) / 1000);
+        const minutes = Math.floor(timeTaken / 60);
+        const seconds = timeTaken % 60;
+        const timeTakenStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Prepare question IDs for storage
+        const questionIds = {};
+        questions.forEach((question, index) => {
+            questionIds[index] = question.id; // Store the actual question ID from database
+        });
+        
+        // Mark unanswered questions as empty strings
+        for (let i = 0; i < questions.length; i++) {
+            if (!userAnswers.hasOwnProperty(i)) {
+                userAnswers[i] = ""; // Mark unanswered questions as empty
+            }
+        }
+        
+        // Create a form to submit the quiz data to store in database
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'quiz.php';
+        
+        const answersInput = document.createElement('input');
+        answersInput.type = 'hidden';
+        answersInput.name = 'user_answers';
+        answersInput.value = JSON.stringify(userAnswers);
+        form.appendChild(answersInput);
+        
+        const questionIdsInput = document.createElement('input');
+        questionIdsInput.type = 'hidden';
+        questionIdsInput.name = 'question_ids';
+        questionIdsInput.value = JSON.stringify(questionIds);
+        form.appendChild(questionIdsInput);
+        
+        const scoreInput = document.createElement('input');
+        scoreInput.type = 'hidden';
+        scoreInput.name = 'score';
+        scoreInput.value = score;
+        form.appendChild(scoreInput);
+        
+        const totalQuestionsInput = document.createElement('input');
+        totalQuestionsInput.type = 'hidden';
+        totalQuestionsInput.name = 'total_questions';
+        totalQuestionsInput.value = totalQuestions;
+        form.appendChild(totalQuestionsInput);
+        
+        const timeTakenInput = document.createElement('input');
+        timeTakenInput.type = 'hidden';
+        timeTakenInput.name = 'time_taken';
+        timeTakenInput.value = timeTakenStr;
+        form.appendChild(timeTakenInput);
+        
+        const completedInput = document.createElement('input');
+        completedInput.type = 'hidden';
+        completedInput.name = 'quiz_completed';
+        completedInput.value = 'true';
+        form.appendChild(completedInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
 
     // Initialize the quiz when the page loads

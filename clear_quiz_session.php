@@ -1,11 +1,11 @@
 <?php
 session_start();
-header('Content-Type: application/json');
 
-unset($_SESSION['quiz_current_question']);
-unset($_SESSION['quiz_score']);
-unset($_SESSION['quiz_time_left']);
+// Clear quiz-related session variables
+unset($_SESSION['quiz_questions']);
+unset($_SESSION['quiz_start_time']);
 unset($_SESSION['answered_questions']);
+unset($_SESSION['quiz_id']);
 
 echo json_encode(['success' => true]);
 ?>

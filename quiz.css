@@ -500,6 +500,7 @@
             border-left: 4px solid #dc3545;
         }
 
+        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -507,7 +508,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.7);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -517,24 +518,115 @@
 
         .modal-content {
             background-color: var(--card-light);
-            padding: 25px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 15px;
             max-width: 500px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             animation: slideInUp 0.3s ease;
+            position: relative;
         }
 
         .modal h2 {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             color: var(--primary);
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 700;
         }
-        
+
         .modal p {
             margin-bottom: 15px;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal .btn {
+            min-width: 140px;
+            padding: 12px 24px;
             font-size: 16px;
+            font-weight: 600;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .warning-text {
+            color: #dc3545;
+            font-weight: bold;
+            padding: 12px;
+            background-color: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+        }
+
+        /* Animation for modal */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive design for modal */
+        @media (max-width: 576px) {
+            .modal-content {
+                padding: 20px;
+            }
+            
+            .modal h2 {
+                font-size: 24px;
+            }
+            
+            .modal p {
+                font-size: 16px;
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+            }
+            
+            .modal .btn {
+                width: 100%;
+            }
         }
 
         .highlight {

@@ -113,7 +113,7 @@ try {
         <div class="score-container">
             <div>Your Score</div>
             <div class="score"><?php echo $score; ?></div>
-            <div>points (<?php echo $totalQuestions > 0 ? round(($score / ($totalQuestions * 10)) * 100) : 0; ?>%)</div>
+            <div>points (<?php round($score * 100) / 190 ?>%)</div>
         </div>
 
         <?php if ($totalQuestions > 0): ?>
@@ -288,7 +288,7 @@ try {
             currentQuestionIndex = index;
             const questionId = questionIds[index];
             const question = questions[questionId];
-            
+                
             if (!question) return;
             
             // Update question info
