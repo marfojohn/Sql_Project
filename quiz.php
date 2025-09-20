@@ -1004,13 +1004,22 @@ function compareResultSets($set1, $set2) {
         });
     }
 
-    // Update question items styling based on answered status
+   // Update question items styling based on answered status
     function updateQuestionItemsStyling() {
         const questionItems = document.querySelectorAll('.question-item');
         questionItems.forEach((item, index) => {
             const questionId = questions[index].id;
+            
+            // Remove all answer classes first
+            item.classList.remove('answered', 'correct', 'incorrect');
+            
+            // Check if answered correctly
             if (answeredQuestions.includes(questionId)) {
                 item.classList.add('answered', 'correct');
+            } 
+            // Check if answered incorrectly
+            else if (wrongAnswers[questionId]) {
+                item.classList.add('answered', 'incorrect');
             }
         });
     }
