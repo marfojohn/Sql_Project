@@ -18,6 +18,12 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit();
 }
 
+// Initialize quiz start time if not set
+if (!isset($_SESSION['quiz_start_time'])) {
+    $_SESSION['quiz_start_time'] = time();
+}
+$elapsed = time() - $_SESSION['quiz_start_time'];
+
 // Handle NEW QUIZ request - Clear everything
 if (isset($_GET['new_quiz'])) {
     // Clear all quiz-related session data
@@ -25,6 +31,13 @@ if (isset($_GET['new_quiz'])) {
     unset($_SESSION['quiz_start_time']);
     unset($_SESSION['answered_questions']);
     unset($_SESSION['quiz_id']);
+
+    echo "<script>
+        localStorage.removeItem('sqlQuizState');
+        localStorage.removeItem('quizTimeLeft');
+        window.location.href='quiz.php';
+    </script>";
+    exit();
     
     // Also clear any stored quiz state from previous sessions
     if (isset($_SESSION['current_quiz_state'])) {
@@ -299,7 +312,7 @@ function compareResultSets($set1, $set2) {
                         <i class="fas fa-question-circle"></i> Question
                     </div>
                     <div class="question-info">
-                        <div>Question <span id="question-number">1</span> of <span id="total-questions"><?php echo count($formattedQuestions); ?></span></div>
+                        <div>Question <span id="question-number">1</span> of <span id="total-questions"><?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?></span></div>
                         <div class="difficulty easy" id="question-difficulty">Easy</div>
                     </div>
                     <div class="question-text" id="question-text">
@@ -364,7 +377,7 @@ function compareResultSets($set1, $set2) {
                         <div class="progress-bar">
                             <div class="progress" id="progress-bar" style="width: 10%;"></div>
                         </div>
-                        <div class="text-center" id="progress-text">1/<?php echo count($formattedQuestions); ?> questions completed</div>
+                        <div class="text-center" id="progress-text">1/<?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?> questions completed</div>
                     </div>
                     
                     <div class="score-container">
@@ -386,7 +399,7 @@ function compareResultSets($set1, $set2) {
                     <div class="questions-list" id="questions-list">
                         <?php
                         // Generate question list items
-                        if (!empty($formattedQuestions)) {
+                        if (!empty($formattedQuestions) && is_array($formattedQuestions)) {
                             foreach ($formattedQuestions as $index => $question) {
                                 $difficultyClass = $question['difficulty'];
                                 $activeClass = $index === 0 ? 'active' : '';
@@ -408,7 +421,7 @@ function compareResultSets($set1, $set2) {
     <div class="modal" id="completion-modal">
         <div class="modal-content">
             <h2>Quiz Completed!</h2>
-            <p>You've answered <span id="completed-count">0</span> out of <span class="highlight"><?php echo count($formattedQuestions); ?></span> questions</p>
+            <p>You've answered <span id="completed-count">0</span> out of <span class="highlight"><?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?></span> questions</p>
             <p>Your score: <span class="highlight" id="final-score">0</span> points</p>
             <p>Time taken: <span class="highlight" id="time-taken">30:00</span></p>
             <button class="btn btn-primary" id="review-answers">Review Answers</button>
@@ -419,7 +432,7 @@ function compareResultSets($set1, $set2) {
     <div class="modal" id="confirm-end-modal">
         <div class="modal-content">
             <h2>End Quiz Early?</h2>
-            <p>You've answered <span id="answered-count">0</span> out of <span class="highlight"><?php echo count($formattedQuestions); ?></span> questions</p>
+            <p>You've answered <span id="answered-count">0</span> out of <span class="highlight"><?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?></span> questions</p>
             <p>Your current score: <span class="highlight" id="current-score">0</span> points</p>
             <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> Any unanswered questions will be marked as incorrect.</p>
             <p>Are you sure you want to end the quiz early?</p>
@@ -440,8 +453,8 @@ function compareResultSets($set1, $set2) {
 
     <script>
     // Pass PHP data to JavaScript
-    const questions = <?php echo $questions_json; ?>;
-    const totalQuestions = <?php echo count($formattedQuestions); ?>;
+    const questions = <?php echo isset($questions_json) ? $questions_json : '[]'; ?>;
+    const totalQuestions = <?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?>;
     const answeredQuestions = <?php echo json_encode($_SESSION['answered_questions'] ?? []); ?>;
 
     // Global variables
@@ -548,6 +561,7 @@ function compareResultSets($set1, $set2) {
         updateProgress();
         addEventListeners();
     }
+
 
     // COMPLETELY clear all quiz state
     function clearQuizState() {
@@ -928,7 +942,7 @@ function compareResultSets($set1, $set2) {
     
     // Save answered questions to server
     function saveAnsweredQuestionsToServer() {
-        const formData = new FormData();
+        const formData = newFormData();
         formData.append('answered_questions', JSON.stringify(answeredQuestions));
         
         fetch('save_answered_questions.php', {
