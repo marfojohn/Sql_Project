@@ -77,6 +77,9 @@ try {
     header("Location: quiz.php");
     exit();
 }
+
+// Calculate percentage
+$percentage = $totalQuestions > 0 ? round(($score / 190) * 100) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,7 +116,7 @@ try {
         <div class="score-container">
             <div>Your Score</div>
             <div class="score"><?php echo $score; ?></div>
-            <div>points (<?php round($score * 100) / 190 ?>%)</div>
+            <div>points (<?php echo $percentage; ?>%)</div>
         </div>
 
         <?php if ($totalQuestions > 0): ?>
