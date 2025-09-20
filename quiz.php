@@ -469,6 +469,7 @@ function compareResultSets($set1, $set2) {
     let timerInterval;
     let codeEditor;
     let quizStartTime = Date.now();
+    let wrongAnswers = {};
 
     // DOM elements
     const timerEl = document.getElementById('timer');
@@ -627,6 +628,7 @@ function compareResultSets($set1, $set2) {
                 currentQuestionIndex = state.currentQuestionIndex || 0;
                 score = state.score || 0;
                 userAnswers = state.userAnswers || {};
+                wrongAnswers = state.wrongAnswers || {};
                 
                 // Load timer state if available
                 const savedTime = localStorage.getItem('quizTimeLeft');
@@ -657,6 +659,7 @@ function compareResultSets($set1, $set2) {
         currentQuestionIndex = 0;
         score = 0;
         userAnswers = {};
+        wrongAnswers = {};
         timeLeft = 1800;
         quizStartTime = Date.now();
         
@@ -669,6 +672,7 @@ function compareResultSets($set1, $set2) {
             currentQuestionIndex: currentQuestionIndex,
             score: score,
             userAnswers: userAnswers,
+            wrongAnswers: wrongAnswers, // Add this line
             timeLeft: timeLeft,
             quizStartTime: quizStartTime,
             quizId: '<?php echo $_SESSION["quiz_id"] ?? "default"; ?>'
@@ -859,7 +863,7 @@ function compareResultSets($set1, $set2) {
         const question = questions[currentQuestionIndex];
         const questionId = question.id;
         
-        // Check if this question has already been answered correctly
+        // Check if this question has already been answered CORRECTLY
         if (answeredQuestions.includes(questionId)) {
             feedbackErrorEl.style.display = 'block';
             feedbackSuccessEl.style.display = 'none';
@@ -892,11 +896,21 @@ function compareResultSets($set1, $set2) {
             const result = await response.json();
             
             if (result.success) {
-                feedbackSuccessEl.style.display = 'block';
-                feedbackErrorEl.style.display = 'none';
-                
-                // Only award points if not already answered correctly
-                if (!answeredQuestions.includes(questionId)) {
+                // Check if user previously answered this question wrong
+                if (wrongAnswers[questionId]) {
+                    // User got it wrong before but now correct
+                    feedbackErrorEl.style.display = 'block';
+                    feedbackSuccessEl.style.display = 'none';
+                    feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> You have already answered this question wrong.';
+                    
+                    // Remove from wrong answers
+                    delete wrongAnswers[questionId];
+                    saveQuizState();
+                } else {
+                    // First time correct answer
+                    feedbackSuccessEl.style.display = 'block';
+                    feedbackErrorEl.style.display = 'none';
+                    
                     // Award points based on difficulty
                     if (question.difficulty === 'basic') {
                         score += 10;
@@ -913,6 +927,7 @@ function compareResultSets($set1, $set2) {
                     const questionItems = document.querySelectorAll('.question-item');
                     if (questionItems[currentQuestionIndex]) {
                         questionItems[currentQuestionIndex].classList.add('answered', 'correct');
+                        questionItems[currentQuestionIndex].classList.remove('incorrect');
                     }
                     
                     scoreEl.textContent = score;
@@ -922,18 +937,29 @@ function compareResultSets($set1, $set2) {
                     saveAnsweredQuestionsToServer();
                 }
             } else {
+                // Wrong answer
                 feedbackErrorEl.style.display = 'block';
                 feedbackSuccessEl.style.display = 'none';
+                
+                // Track this wrong answer
+                wrongAnswers[questionId] = true;
+                saveQuizState();
                 
                 // Update the question item styling for incorrect answer
                 const questionItems = document.querySelectorAll('.question-item');
                 if (questionItems[currentQuestionIndex]) {
-                    questionItems[currentQuestionIndex].classList.add('answered', 'incorrect');
+                    // Only mark as incorrect if not already correct
+                    if (!answeredQuestions.includes(questionId)) {
+                        questionItems[currentQuestionIndex].classList.add('answered', 'incorrect');
+                        questionItems[currentQuestionIndex].classList.remove('correct');
+                    }
                 }
                 
                 // Show specific error message if available
                 if (result.error) {
                     feedbackErrorEl.innerHTML = `<i class="fas fa-times-circle"></i> ${result.error}`;
+                } else {
+                    feedbackErrorEl.innerHTML = '<i class="fas fa-times-circle"></i> Incorrect answer. Please try again.';
                 }
                 
                 // Hide error message after 5 seconds
