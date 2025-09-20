@@ -105,7 +105,7 @@ $percentage = $totalQuestions > 0 ? round(($score / 190) * 100) : 0;
                     <button class="theme-toggle" id="theme-toggle">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <a href="quiz.php" class="btn btn-secondary">Back to Quiz</a>
+                    <a href="quiz.php?new_quiz=1" class="btn btn-secondary">New Quiz</a>
                     <a href="logout.php" class="btn btn-primary">Logout</a>
                 </div>
             </div>
