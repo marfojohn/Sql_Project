@@ -31,6 +31,7 @@ if (isset($_GET['new_quiz'])) {
     unset($_SESSION['quiz_start_time']);
     unset($_SESSION['answered_questions']);
     unset($_SESSION['quiz_id']);
+    unset($_SESSION['current_question_index']);
 
     echo "<script>
         localStorage.removeItem('sqlQuizState');
@@ -110,6 +111,7 @@ if (!isset($_SESSION['quiz_questions'])) {
         $_SESSION['quiz_start_time'] = time();
         $_SESSION['answered_questions'] = [];
         $_SESSION['quiz_id'] = uniqid('quiz_', true);
+        $_SESSION['current_question_index'] = 0; // Initialize current question index
         
     } catch (PDOException $e) {
         $error = "Database error: " . $e->getMessage();
@@ -172,6 +174,7 @@ if (isset($_POST['quiz_completed'])) {
         unset($_SESSION['quiz_questions']);
         unset($_SESSION['quiz_start_time']);
         unset($_SESSION['answered_questions']);
+        unset($_SESSION['current_question_index']);
         
         // Redirect to review page
         header("Location: review.php");
@@ -456,9 +459,10 @@ function compareResultSets($set1, $set2) {
     const questions = <?php echo isset($questions_json) ? $questions_json : '[]'; ?>;
     const totalQuestions = <?php echo is_array($formattedQuestions) ? count($formattedQuestions) : 0; ?>;
     const answeredQuestions = <?php echo json_encode($_SESSION['answered_questions'] ?? []); ?>;
+    const initialQuestionIndex = <?php echo isset($_SESSION['current_question_index']) ? $_SESSION['current_question_index'] : 0; ?>;
 
     // Global variables
-    let currentQuestionIndex = 0;
+    let currentQuestionIndex = initialQuestionIndex;
     let score = 0;
     let userAnswers = {};
     let timeLeft = 1800; // 30 minutes in seconds
@@ -560,6 +564,9 @@ function compareResultSets($set1, $set2) {
         startTimer();
         updateProgress();
         addEventListeners();
+        
+        // Load the current question
+        loadQuestion(currentQuestionIndex);
     }
 
 
@@ -602,8 +609,8 @@ function compareResultSets($set1, $set2) {
         // Clear results
         resultContainerEl.innerHTML = '<p class="text-center">Your query results will appear here</p>';
         
-        // Load first question
-        loadQuestion(0);
+        // Save the cleared state
+        saveQuizState();
         
         console.log("Quiz state completely cleared for new quiz");
     }
@@ -627,7 +634,6 @@ function compareResultSets($set1, $set2) {
                 
                 // Update UI with loaded state
                 scoreEl.textContent = score;
-                loadQuestion(currentQuestionIndex);
                 updateQuestionItemsStyling();
                 updateProgress();
                 
@@ -655,7 +661,6 @@ function compareResultSets($set1, $set2) {
         quizStartTime = Date.now();
         
         scoreEl.textContent = score;
-        loadQuestion(currentQuestionIndex);
     }
 
     // Save quiz state to localStorage
@@ -671,6 +676,19 @@ function compareResultSets($set1, $set2) {
         
         localStorage.setItem('sqlQuizState', JSON.stringify(state));
         localStorage.setItem('quizTimeLeft', timeLeft);
+        
+        // Also save to session for PHP access
+        fetch('save_quiz_state.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                currentQuestionIndex: currentQuestionIndex
+            })
+        }).catch(error => {
+            console.error('Error saving state to server:', error);
+        });
         
         console.log("Quiz state saved");
     }
@@ -942,7 +960,7 @@ function compareResultSets($set1, $set2) {
     
     // Save answered questions to server
     function saveAnsweredQuestionsToServer() {
-        const formData = newFormData();
+        const formData = new FormData();
         formData.append('answered_questions', JSON.stringify(answeredQuestions));
         
         fetch('save_answered_questions.php', {
@@ -1015,6 +1033,10 @@ function compareResultSets($set1, $set2) {
                 item.classList.remove('active');
             }
         });
+        
+        // Save the current question index
+        currentQuestionIndex = index;
+        saveQuizState();
     }
 
     // Finish the quiz (when time runs out or all questions answered)

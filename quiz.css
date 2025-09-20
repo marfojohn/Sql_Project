@@ -555,6 +555,16 @@
             font-weight: 600;
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:disabled:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
         .highlight {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
