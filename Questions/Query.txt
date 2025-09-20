@@ -1,1 +1,0 @@
-As you can see from the photo deep this happens when I hit new quiz, you can see that the progress bar is showing 2/10 when in real sense I have not answered any question and the time is showing about 19:00 and this happens when you hit on a new quiz. I expect the app to reset everything on the new quiz and stop giving info or state from the old one
